@@ -120,10 +120,6 @@ public class HouseScatter : EditorWindow
             Material mat = filter.GetComponent<MeshRenderer>().sharedMaterial;
             mat.SetPass(0);
 
-            MaterialPropertyBlock materialPropertyBlock = new MaterialPropertyBlock();
-            materialPropertyBlock.SetColor("_Color", Color.cyan);
-            mat.SetColor("_Color", Color.red);
-
             Matrix4x4 childToPose = filter.transform.localToWorldMatrix;
             Matrix4x4 childToWorldMtx = poseToWorldMtx * childToPose;
 
