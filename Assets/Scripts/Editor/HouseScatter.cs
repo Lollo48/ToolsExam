@@ -12,9 +12,12 @@ public class HouseScatter : EditorWindow
     public GameObject spawnPrefab = null;
     public Material previewMaterial;
 
+
     SerializedObject so;
     SerializedProperty spawnPrefabP;
-    SerializedProperty previewMatP;
+
+    Vector3 previewPosition;
+    Quaternion previewRotation;
 
 
     GameObject[] prefabs;
@@ -25,8 +28,8 @@ public class HouseScatter : EditorWindow
 
         so = new SerializedObject(this);
         spawnPrefabP = so.FindProperty("spawnPrefab");
-        previewMatP = so.FindProperty("previewMaterial");
 
+        previewRotation = Quaternion.identity;
 
         string[] guids = AssetDatabase.FindAssets("t:prefab", new[] { "Assets/Prefabs/PropScatterer" });
         IEnumerable<string> paths = guids.Select(AssetDatabase.GUIDToAssetPath);
@@ -36,7 +39,7 @@ public class HouseScatter : EditorWindow
 
     private void OnDisable()
     {
-        SceneView.duringSceneGui += DuringSceneGUI;
+        SceneView.duringSceneGui -= DuringSceneGUI;
     }
 
 
@@ -44,8 +47,6 @@ public class HouseScatter : EditorWindow
     {
         so.Update();
         EditorGUILayout.PropertyField(spawnPrefabP);
-
-        EditorGUILayout.PropertyField(previewMatP);
 
     }
 
@@ -56,6 +57,37 @@ public class HouseScatter : EditorWindow
 
         Handles.BeginGUI();
 
+        SpawnToggle();
+
+        if (spawnPrefab == null) return;
+
+        Handles.zTest = UnityEngine.Rendering.CompareFunction.LessEqual;
+
+        Transform cam = sceneView.camera.transform;
+
+        if (Event.current.type == EventType.MouseMove)
+        {
+            sceneView.Repaint();
+        }
+
+        Ray ray = HandleUtility.GUIPointToWorldRay(Event.current.mousePosition);
+
+        if (Physics.Raycast(ray, out RaycastHit hit))
+        {
+
+            preview(hit);
+
+            if (Event.current.keyCode == KeyCode.Space && Event.current.type == EventType.KeyDown)
+            {
+                TrySpawnObjects(hit);
+            }
+        }
+
+        RotatePrefab();
+    }
+
+    void SpawnToggle()
+    {
         Rect rect = new Rect(8, 8, 50, 50);
 
         foreach (GameObject prefab in prefabs)
@@ -72,42 +104,32 @@ public class HouseScatter : EditorWindow
         }
 
         Handles.EndGUI();
-
-        if (spawnPrefab == null) return;
-
-        Handles.zTest = UnityEngine.Rendering.CompareFunction.LessEqual;
-
-        Transform cam = sceneView.camera.transform;
-
-        if (Event.current.type == EventType.MouseMove)
-        {
-            sceneView.Repaint();
-        }
-
-        RotatePrefab();
-
-        Ray ray = HandleUtility.GUIPointToWorldRay(Event.current.mousePosition);
-
-        if (Physics.Raycast(ray, out RaycastHit hit))
-        {
-
-
-
-
-
-
-            if (Event.current.keyCode == KeyCode.Space && Event.current.type == EventType.KeyDown)
-            {
-                TrySpawnObjects(hit);
-            }
-        }
-
     }
 
-
-    void preview()
+    void preview(RaycastHit hit)
     {
+        if (spawnPrefab == null) return;
 
+        MeshFilter[] filters = spawnPrefab.GetComponentsInChildren<MeshFilter>();
+
+        Matrix4x4 poseToWorldMtx = Matrix4x4.TRS(hit.point + new Vector3(0,0.2f,0), previewRotation, Vector3.one);
+
+        foreach (MeshFilter filter in filters)
+        {
+            Mesh mesh = filter.sharedMesh;
+            Material mat = filter.GetComponent<MeshRenderer>().sharedMaterial;
+            mat.SetPass(0);
+
+            MaterialPropertyBlock materialPropertyBlock = new MaterialPropertyBlock();
+            materialPropertyBlock.SetColor("_Color", Color.cyan);
+            mat.SetColor("_Color", Color.red);
+
+            Matrix4x4 childToPose = filter.transform.localToWorldMatrix;
+            Matrix4x4 childToWorldMtx = poseToWorldMtx * childToPose;
+
+            Graphics.DrawMeshNow(mesh, childToWorldMtx);
+
+        }
     }
 
     void TrySpawnObjects(RaycastHit hit)
@@ -116,27 +138,16 @@ public class HouseScatter : EditorWindow
 
         GameObject thingToSpawn = (GameObject)PrefabUtility.InstantiatePrefab(spawnPrefab);
         Undo.RegisterCreatedObjectUndo(thingToSpawn, "Object Spawn");
-        thingToSpawn.transform.position = hit.point;
+        thingToSpawn.transform.SetPositionAndRotation(hit.point + new Vector3(0, 0.2f, 0), previewRotation);
 
     }
 
-    private Quaternion RotatePrefab()
+    private void RotatePrefab()
     {
         if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.R)
         {
-            so.Update();
-
-            spawnPrefab.transform.Rotate(Vector3.up, 90f);
-            
-            if (so.ApplyModifiedProperties())
-            {
-                Repaint();
-            }
-
-            Event.current.Use();
-        }
-
-        return spawnPrefab.transform.rotation;
+            previewRotation *= Quaternion.Euler(0f, 90f, 0f);
+        } 
     }
 
 }
