@@ -10,8 +10,6 @@ public class HouseScatter : EditorWindow
     public static void OpenWindow() => GetWindow(typeof(HouseScatter));
 
     public GameObject spawnPrefab = null;
-    public Material previewMaterial;
-
 
     SerializedObject so;
     SerializedProperty spawnPrefabP;
@@ -28,6 +26,7 @@ public class HouseScatter : EditorWindow
 
         so = new SerializedObject(this);
         spawnPrefabP = so.FindProperty("spawnPrefab");
+
 
         previewRotation = Quaternion.identity;
 
@@ -47,6 +46,7 @@ public class HouseScatter : EditorWindow
     {
         so.Update();
         EditorGUILayout.PropertyField(spawnPrefabP);
+
 
     }
 
@@ -74,8 +74,9 @@ public class HouseScatter : EditorWindow
 
         if (Physics.Raycast(ray, out RaycastHit hit))
         {
+            PositionSetter(hit);
 
-            preview(hit);
+            Drawpreview(hit);
 
             if (Event.current.keyCode == KeyCode.Space && Event.current.type == EventType.KeyDown)
             {
@@ -84,6 +85,8 @@ public class HouseScatter : EditorWindow
         }
 
         RotatePrefab();
+
+        
     }
 
     void SpawnToggle()
@@ -106,27 +109,32 @@ public class HouseScatter : EditorWindow
         Handles.EndGUI();
     }
 
-    void preview(RaycastHit hit)
+
+    void Drawpreview(RaycastHit hit)
     {
         if (spawnPrefab == null) return;
 
         MeshFilter[] filters = spawnPrefab.GetComponentsInChildren<MeshFilter>();
+        House preview = spawnPrefab.GetComponent<House>();
 
-        Matrix4x4 poseToWorldMtx = Matrix4x4.TRS(hit.point + new Vector3(0,0.2f,0), previewRotation, Vector3.one);
+        Matrix4x4 poseToWorldMtx = Matrix4x4.TRS(previewPosition, previewRotation, Vector3.one);
 
         foreach (MeshFilter filter in filters)
         {
+            
             Mesh mesh = filter.sharedMesh;
             Material mat = filter.GetComponent<MeshRenderer>().sharedMaterial;
             mat.SetPass(0);
-
             Matrix4x4 childToPose = filter.transform.localToWorldMatrix;
             Matrix4x4 childToWorldMtx = poseToWorldMtx * childToPose;
 
             Graphics.DrawMeshNow(mesh, childToWorldMtx);
 
         }
+
+        
     }
+
 
     void TrySpawnObjects(RaycastHit hit)
     {
@@ -134,16 +142,40 @@ public class HouseScatter : EditorWindow
 
         GameObject thingToSpawn = (GameObject)PrefabUtility.InstantiatePrefab(spawnPrefab);
         Undo.RegisterCreatedObjectUndo(thingToSpawn, "Object Spawn");
-        thingToSpawn.transform.SetPositionAndRotation(hit.point + new Vector3(0, 0.2f, 0), previewRotation);
+        
+        thingToSpawn.transform.SetPositionAndRotation(previewPosition, previewRotation);
 
     }
 
+   
     private void RotatePrefab()
     {
         if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.R)
         {
             previewRotation *= Quaternion.Euler(0f, 90f, 0f);
         } 
+    }
+
+    void PositionSetter(RaycastHit hit)
+    {
+        spawnPrefab.TryGetComponent(out House house);
+        Vector3 position = Vector3.zero;
+
+        for(int i=0; i < house.DoorsNumber; i++)
+        {
+            Vector3 direction = previewRotation * Quaternion.Euler(0f, 90f * i, 0f) * Vector3.forward * 10f;
+
+            Ray ray = new Ray(previewPosition + Vector3.up * 2, direction);
+            Debug.DrawRay(previewPosition + Vector3.up * 2, direction , Color.red);
+
+            if (Physics.Raycast(ray, out RaycastHit hit2) && hit2.collider.gameObject.layer == 6)
+            {
+                position = hit2.collider.transform.position;
+            }
+        }
+        
+        previewPosition = position != Vector3.zero ? position : hit.point + new Vector3(0, 0.2f, 0);
+       
     }
 
 }

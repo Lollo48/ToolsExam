@@ -4,9 +4,7 @@ using UnityEngine;
 
 public class House : MonoBehaviour
 {
-    
-
-
+   public int DoorsNumber;
 
 
 }
