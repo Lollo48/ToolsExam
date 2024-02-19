@@ -11,14 +11,15 @@ public class HouseScatter : EditorWindow
 
     public GameObject spawnPrefab = null;
 
-    SerializedObject so;
-    SerializedProperty spawnPrefabP;
-
     Vector3 previewPosition;
     Quaternion previewRotation;
 
-
     GameObject[] prefabs;
+
+    SerializedObject so;
+    SerializedProperty spawnPrefabP;
+
+   
 
     private void OnEnable()
     {
@@ -26,7 +27,6 @@ public class HouseScatter : EditorWindow
 
         so = new SerializedObject(this);
         spawnPrefabP = so.FindProperty("spawnPrefab");
-
 
         previewRotation = Quaternion.identity;
 
@@ -76,11 +76,11 @@ public class HouseScatter : EditorWindow
         {
             PositionSetter(hit);
 
-            Drawpreview(hit);
+            Drawpreview();
 
             if (Event.current.keyCode == KeyCode.Space && Event.current.type == EventType.KeyDown)
             {
-                TrySpawnObjects(hit);
+                SpawnObjects();
             }
         }
 
@@ -89,9 +89,12 @@ public class HouseScatter : EditorWindow
         
     }
 
+    /// <summary>
+    /// Generates the houses that can be selected on the left of the scene
+    /// </summary>
     void SpawnToggle()
     {
-        Rect rect = new Rect(8, 8, 50, 50);
+        Rect rect = new Rect(1400, 100, 100, 100);
 
         foreach (GameObject prefab in prefabs)
         {
@@ -109,14 +112,14 @@ public class HouseScatter : EditorWindow
         Handles.EndGUI();
     }
 
-
-    void Drawpreview(RaycastHit hit)
+    /// <summary>
+    /// I draw the preview of the house that I will spawn
+    /// </summary>
+    void Drawpreview()
     {
         if (spawnPrefab == null) return;
 
         MeshFilter[] filters = spawnPrefab.GetComponentsInChildren<MeshFilter>();
-        House preview = spawnPrefab.GetComponent<House>();
-
         Matrix4x4 poseToWorldMtx = Matrix4x4.TRS(previewPosition, previewRotation, Vector3.one);
 
         foreach (MeshFilter filter in filters)
@@ -135,8 +138,11 @@ public class HouseScatter : EditorWindow
         
     }
 
-
-    void TrySpawnObjects(RaycastHit hit)
+    /// <summary>
+    /// spawn the selected object in editor 
+    /// </summary>
+    /// <param name="hit"></param>
+    void SpawnObjects()
     {
         if (spawnPrefab == null) return;
 
@@ -145,9 +151,12 @@ public class HouseScatter : EditorWindow
         
         thingToSpawn.transform.SetPositionAndRotation(previewPosition, previewRotation);
 
+
     }
 
-   
+   /// <summary>
+   /// rotate the prefab in 90° in y
+   /// </summary>
     private void RotatePrefab()
     {
         if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.R)
@@ -156,6 +165,10 @@ public class HouseScatter : EditorWindow
         } 
     }
 
+    /// <summary>
+    /// This function sets the positions of the preview and the spawn of the object and also checks whether the house can be snapped
+    /// </summary>
+    /// <param name="hit"></param>
     void PositionSetter(RaycastHit hit)
     {
         spawnPrefab.TryGetComponent(out House house);
@@ -165,6 +178,7 @@ public class HouseScatter : EditorWindow
         {
             Vector3 direction = previewRotation * Quaternion.Euler(0f, 90f * i, 0f) * Vector3.forward * 10f;
 
+            // spawn raycast for each door
             Ray ray = new Ray(previewPosition + Vector3.up * 2, direction);
             Debug.DrawRay(previewPosition + Vector3.up * 2, direction , Color.red);
 
@@ -174,6 +188,7 @@ public class HouseScatter : EditorWindow
             }
         }
         
+        //Set the new position
         previewPosition = position != Vector3.zero ? position : hit.point + new Vector3(0, 0.2f, 0);
        
     }
