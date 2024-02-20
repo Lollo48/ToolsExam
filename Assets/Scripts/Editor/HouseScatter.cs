@@ -10,6 +10,10 @@ public class HouseScatter : EditorWindow
     public static void OpenWindow() => GetWindow(typeof(HouseScatter));
 
     public GameObject spawnPrefab = null;
+    public Material previewMaterial = null;
+
+    public bool wantPreview = false;
+    public bool wantSnap = false;
 
     Vector3 previewPosition;
     Quaternion previewRotation;
@@ -18,8 +22,10 @@ public class HouseScatter : EditorWindow
 
     SerializedObject so;
     SerializedProperty spawnPrefabP;
+    SerializedProperty previewMaterialP;
+    SerializedProperty wantPreviewP;
+    SerializedProperty wantSnapP;
 
-   
 
     private void OnEnable()
     {
@@ -27,6 +33,9 @@ public class HouseScatter : EditorWindow
 
         so = new SerializedObject(this);
         spawnPrefabP = so.FindProperty("spawnPrefab");
+        previewMaterialP = so.FindProperty("previewMaterial");
+        wantPreviewP = so.FindProperty("wantPreview");
+        wantSnapP = so.FindProperty("wantSnap");
 
         previewRotation = Quaternion.identity;
 
@@ -46,8 +55,15 @@ public class HouseScatter : EditorWindow
     {
         so.Update();
         EditorGUILayout.PropertyField(spawnPrefabP);
+        EditorGUILayout.PropertyField(previewMaterialP);
+        EditorGUILayout.PropertyField(wantPreviewP);
+        EditorGUILayout.PropertyField(wantSnapP);
 
 
+        if (so.ApplyModifiedProperties())
+        {
+            SceneView.RepaintAll();
+        }
     }
 
 
@@ -95,12 +111,18 @@ public class HouseScatter : EditorWindow
     void SpawnToggle()
     {
         Rect rect = new Rect(1400, 100, 100, 100);
+        Rect backgroundRect = new Rect(rect.x - 17,rect.y - 12, rect.width + 30, rect.height + 333); // Rettangolo per l'area di sfondo
+        GUI.Box(backgroundRect, ""); // Box vuoto per l'area di sfondo
 
         foreach (GameObject prefab in prefabs)
         {
             Texture icon = AssetPreview.GetAssetPreview(prefab);
 
-            if (GUI.Toggle(rect, spawnPrefab == prefab, new GUIContent(icon)))
+            GUIStyle buttonStyle = new GUIStyle(GUI.skin.button);
+            buttonStyle.padding = new RectOffset(10, 10, 10, 10);
+            buttonStyle.hover.background = buttonStyle.active.background;
+
+            if (GUI.Button(rect, new GUIContent(icon), buttonStyle))
             {
                 spawnPrefab = prefab;
                 Repaint();
@@ -112,12 +134,14 @@ public class HouseScatter : EditorWindow
         Handles.EndGUI();
     }
 
+ 
     /// <summary>
     /// I draw the preview of the house that I will spawn
     /// </summary>
     void Drawpreview()
     {
         if (spawnPrefab == null) return;
+        if (!wantPreview) return;
 
         MeshFilter[] filters = spawnPrefab.GetComponentsInChildren<MeshFilter>();
         Matrix4x4 poseToWorldMtx = Matrix4x4.TRS(previewPosition, previewRotation, Vector3.one);
@@ -126,8 +150,12 @@ public class HouseScatter : EditorWindow
         {
             
             Mesh mesh = filter.sharedMesh;
-            Material mat = filter.GetComponent<MeshRenderer>().sharedMaterial;
-            mat.SetPass(0);
+            //Material mat = filter.GetComponent<MeshRenderer>().sharedMaterial;
+
+            if (previewMaterial == null) return;
+            else previewMaterial.SetPass(0);
+
+            //mat.SetPass(0);
             Matrix4x4 childToPose = filter.transform.localToWorldMatrix;
             Matrix4x4 childToWorldMtx = poseToWorldMtx * childToPose;
 
@@ -171,6 +199,9 @@ public class HouseScatter : EditorWindow
     /// <param name="hit"></param>
     void PositionSetter(RaycastHit hit)
     {
+        if (!wantPreview) return;
+        if (!wantSnap) previewPosition = hit.point + new Vector3(0, 0.2f, 0);
+
         spawnPrefab.TryGetComponent(out House house);
         Vector3 position = Vector3.zero;
 
