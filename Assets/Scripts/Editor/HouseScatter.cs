@@ -9,10 +9,23 @@ public class HouseScatter : EditorWindow
     [MenuItem("Tools/HouseScatterer")]
     public static void OpenWindow() => GetWindow(typeof(HouseScatter));
 
+    /// <summary>
+    /// prefabs to spawn
+    /// </summary>
     public GameObject spawnPrefab = null;
+
+    /// <summary>
+    /// the material that will be used for the preview
+    /// </summary>
     public Material previewMaterial = null;
 
+    /// <summary>
+    /// bool to turn off the preview
+    /// </summary>
     public bool wantPreview = false;
+    /// <summary>
+    /// bool to turn off the snapping
+    /// </summary>
     public bool wantSnap = false;
 
     Vector3 previewPosition;
@@ -58,7 +71,6 @@ public class HouseScatter : EditorWindow
         EditorGUILayout.PropertyField(previewMaterialP);
         EditorGUILayout.PropertyField(wantPreviewP);
         EditorGUILayout.PropertyField(wantSnapP);
-
 
         if (so.ApplyModifiedProperties())
         {
@@ -110,9 +122,12 @@ public class HouseScatter : EditorWindow
     /// </summary>
     void SpawnToggle()
     {
-        Rect rect = new Rect(1400, 100, 100, 100);
-        Rect backgroundRect = new Rect(rect.x - 17,rect.y - 12, rect.width + 30, rect.height + 333); // Rettangolo per l'area di sfondo
-        GUI.Box(backgroundRect, ""); // Box vuoto per l'area di sfondo
+
+        float rectPosX = SceneView.lastActiveSceneView.camera.pixelWidth * 0.01f;
+        float rectPosY = SceneView.lastActiveSceneView.camera.pixelHeight * 0.2f;
+        Rect rect = new Rect(rectPosX, rectPosY, 100, 100);
+        Rect backgroundRect = new Rect(rect.x - 17, rect.y - 12, rect.width + 30, rect.height + 333); 
+        GUI.Box(backgroundRect, ""); 
 
         foreach (GameObject prefab in prefabs)
         {
@@ -132,9 +147,10 @@ public class HouseScatter : EditorWindow
         }
 
         Handles.EndGUI();
+
     }
 
- 
+
     /// <summary>
     /// I draw the preview of the house that I will spawn
     /// </summary>
